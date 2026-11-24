@@ -1,0 +1,499 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Vision Scanner</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b1224;
+    color: white;
+}
+
+header {
+    padding: 25px;
+    text-align: center;
+    background: #111d35;
+    border-bottom: 1px solid #263b5c;
+}
+
+header h1 {
+    color: #38d9ff;
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 2px;
+}
+
+header p {
+    color: #a5b5ce;
+    font-size: 13px;
+}
+
+.container {
+    max-width: 950px;
+    margin: 30px auto;
+    padding: 15px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.card {
+    background: #16233c;
+    border: 1px solid #293d5e;
+    border-radius: 15px;
+    padding: 22px;
+}
+
+.card h2 {
+    font-size: 17px;
+    color: #38d9ff;
+    margin-top: 0;
+}
+
+.camera {
+    width: 100%;
+    min-height: 250px;
+    background: #080e1c;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.camera canvas {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    display: block;
+}
+
+.placeholder {
+    color: #788ba9;
+    text-align: center;
+    padding: 30px;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+button {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.start {
+    background: #00c8ed;
+    color: #071326;
+}
+
+.stop {
+    background: #ef476f;
+    color: white;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.status {
+    color: #a5b5ce;
+    font-size: 13px;
+    margin-top: 15px;
+}
+
+.result {
+    background: #0d1930;
+    border-radius: 12px;
+    padding: 22px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.result small {
+    color: #8ca4c4;
+    letter-spacing: 2px;
+}
+
+#topResult {
+    font-size: 30px;
+    font-weight: bold;
+    color: #39dcff;
+    margin: 15px 0 5px;
+}
+
+#topConfidence {
+    font-size: 18px;
+    color: #7cffbd;
+}
+
+.prediction {
+    margin: 18px 0;
+}
+
+.prediction-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.bar {
+    height: 10px;
+    background: #283b59;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00b9eb, #50f2c2);
+    border-radius: 20px;
+    transition: width 0.2s;
+}
+
+.note {
+    color: #8295b1;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 25px;
+}
+
+@media(max-width: 650px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>AI VISION SCANNER</h1>
+    <p>SMART IMAGE RECOGNITION SYSTEM</p>
+</header>
+
+<div class="container">
+
+    <div class="grid">
+
+        <!-- CAMERA -->
+        <div class="card">
+
+            <h2>📷 CAMERA SCANNER</h2>
+
+            <div class="camera" id="webcam-container">
+                <div class="placeholder">
+                    <p>📸</p>
+                    <p>Camera is not started</p>
+                    <p>Click START to begin scanning</p>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="start" id="startBtn"
+                    onclick="init()">START CAMERA</button>
+
+                <button class="stop" id="stopBtn"
+                    onclick="stopCamera()" disabled>
+                    STOP
+                </button>
+            </div>
+
+            <div class="status" id="status">
+                ● System Ready
+            </div>
+
+        </div>
+
+        <!-- RESULT -->
+        <div class="card">
+
+            <h2>🤖 AI RECOGNITION</h2>
+
+            <div class="result">
+                <small>AI DETECTED</small>
+
+                <div id="topResult">---</div>
+
+                <div id="topConfidence">
+                    0% Confidence
+                </div>
+            </div>
+
+            <h2>CLASS PREDICTIONS</h2>
+
+            <div id="label-container">
+                <p class="placeholder">
+                    Waiting for AI prediction...
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="note">
+        Powered by TensorFlow.js & Teachable Machine
+        <br>
+        AI Vision Recognition | Educational Project
+    </div>
+
+</div>
+
+<script>
+
+// ==================================
+// MODEL SETTINGS
+// ==================================
+
+// 请确认 my_model 文件夹与 HTML 在同一个目录
+const URL = "./my_model/";
+
+let model;
+let webcam;
+let maxPredictions;
+
+let running = false;
+let animationId = null;
+let predicting = false;
+
+
+// ==================================
+// START CAMERA
+// ==================================
+
+async function init() {
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const status = document.getElementById("status");
+
+    startBtn.disabled = true;
+
+    try {
+
+        status.innerText = "● Loading AI Model...";
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // Load AI model
+        model = await tmImage.load(
+            modelURL,
+            metadataURL
+        );
+
+        maxPredictions = model.getTotalClasses();
+
+        // Setup webcam
+        webcam = new tmImage.Webcam(
+            300,
+            300,
+            true
+        );
+
+        await webcam.setup();
+        await webcam.play();
+
+        // Display camera
+        const container =
+            document.getElementById("webcam-container");
+
+        container.innerHTML = "";
+        container.appendChild(webcam.canvas);
+
+        // Create prediction labels
+        const labelContainer =
+            document.getElementById("label-container");
+
+        labelContainer.innerHTML = "";
+
+        for (let i = 0; i < maxPredictions; i++) {
+
+            const div = document.createElement("div");
+
+            div.className = "prediction";
+
+            div.innerHTML = `
+                <div class="prediction-header">
+                    <span class="class-name"></span>
+                    <span class="percentage">0%</span>
+                </div>
+
+                <div class="bar">
+                    <div class="bar-fill"></div>
+                </div>
+            `;
+
+            labelContainer.appendChild(div);
+        }
+
+        running = true;
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        status.innerText = "● Camera Active - Scanning...";
+
+        loop();
+
+    } catch (error) {
+
+        console.error(error);
+
+        status.innerText =
+            "● Error: " + error.message;
+
+        startBtn.disabled = false;
+
+        alert(
+            "无法启动 AI Scanner。\n\n" +
+            "请检查模型文件、摄像头权限及网页运行环境。"
+        );
+    }
+}
+
+
+// ==================================
+// AI PREDICTION LOOP
+// ==================================
+
+async function loop() {
+
+    if (!running) return;
+
+    webcam.update();
+
+    if (!predicting) {
+
+        predicting = true;
+
+        try {
+            await predict();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            predicting = false;
+        }
+    }
+
+    if (running) {
+        animationId = requestAnimationFrame(loop);
+    }
+}
+
+
+// ==================================
+// PREDICT IMAGE
+// ==================================
+
+async function predict() {
+
+    const prediction =
+        await model.predict(webcam.canvas);
+
+    // Find highest probability
+    let highest = prediction[0];
+
+    for (let i = 0; i < maxPredictions; i++) {
+
+        if (prediction[i].probability >
+            highest.probability) {
+
+            highest = prediction[i];
+        }
+
+        const probability =
+            prediction[i].probability * 100;
+
+        const item =
+            document.getElementById("label-container")
+            .children[i];
+
+        item.querySelector(".class-name").innerText =
+            prediction[i].className;
+
+        item.querySelector(".percentage").innerText =
+            probability.toFixed(1) + "%";
+
+        item.querySelector(".bar-fill").style.width =
+            probability + "%";
+    }
+
+    // Show highest prediction
+    document.getElementById("topResult").innerText =
+        highest.className;
+
+    document.getElementById("topConfidence").innerText =
+        (highest.probability * 100).toFixed(1) +
+        "% Confidence";
+}
+
+
+// ==================================
+// STOP CAMERA
+// ==================================
+
+function stopCamera() {
+
+    running = false;
+
+    if (animationId !== null) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+
+    if (webcam) {
+        webcam.stop();
+    }
+
+    document.getElementById("webcam-container")
+        .innerHTML = `
+        <div class="placeholder">
+            <p>📸</p>
+            <p>Camera Stopped</p>
+        </div>
+    `;
+
+    document.getElementById("status").innerText =
+        "● Scanner Stopped";
+
+    document.getElementById("startBtn").disabled =
+        false;
+
+    document.getElementById("stopBtn").disabled =
+        true;
+
+}
+
+</script>
+
+</body>
+</html>
