@@ -4,6 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>AI Vision Scanner</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -22,7 +23,7 @@ body {
 }
 
 header {
-    padding: 25px;
+    padding: 28px 15px;
     text-align: center;
     background: #111d35;
     border-bottom: 1px solid #263b5c;
@@ -41,7 +42,7 @@ header p {
 }
 
 .container {
-    max-width: 950px;
+    max-width: 1000px;
     margin: 30px auto;
     padding: 15px;
 }
@@ -67,7 +68,7 @@ header p {
 
 .camera {
     width: 100%;
-    min-height: 250px;
+    min-height: 280px;
     background: #080e1c;
     border-radius: 12px;
     display: flex;
@@ -177,6 +178,43 @@ button:disabled {
     transition: width 0.2s;
 }
 
+/* DECISION BOX */
+
+.decision {
+    margin-top: 20px;
+    padding: 22px;
+    border-radius: 12px;
+    text-align: center;
+    background: #203653;
+    transition: 0.3s;
+}
+
+.decision h2 {
+    font-size: 25px;
+    margin: 8px 0;
+    color: white;
+}
+
+.decision p {
+    color: #c3d3e8;
+    font-size: 14px;
+}
+
+.decision.like {
+    background: linear-gradient(135deg, #145c42, #173c32);
+    border: 1px solid #36c98a;
+}
+
+.decision.dislike {
+    background: linear-gradient(135deg, #74313d, #492d36);
+    border: 1px solid #ef7184;
+}
+
+.decision.unknown {
+    background: #39445b;
+    border: 1px solid #8594b1;
+}
+
 .note {
     color: #8295b1;
     font-size: 12px;
@@ -187,6 +225,10 @@ button:disabled {
 @media(max-width: 650px) {
     .grid {
         grid-template-columns: 1fr;
+    }
+
+    header h1 {
+        font-size: 22px;
     }
 }
 </style>
@@ -210,20 +252,27 @@ button:disabled {
 
             <div class="camera" id="webcam-container">
                 <div class="placeholder">
-                    <p>📸</p>
+                    <h1>📸</h1>
                     <p>Camera is not started</p>
                     <p>Click START to begin scanning</p>
                 </div>
             </div>
 
             <div class="buttons">
-                <button class="start" id="startBtn"
-                    onclick="init()">START CAMERA</button>
 
-                <button class="stop" id="stopBtn"
-                    onclick="stopCamera()" disabled>
+                <button class="start"
+                    id="startBtn"
+                    onclick="init()">
+                    START CAMERA
+                </button>
+
+                <button class="stop"
+                    id="stopBtn"
+                    onclick="stopCamera()"
+                    disabled>
                     STOP
                 </button>
+
             </div>
 
             <div class="status" id="status">
@@ -232,12 +281,14 @@ button:disabled {
 
         </div>
 
-        <!-- RESULT -->
+
+        <!-- AI RESULT -->
         <div class="card">
 
             <h2>🤖 AI RECOGNITION</h2>
 
             <div class="result">
+
                 <small>AI DETECTED</small>
 
                 <div id="topResult">---</div>
@@ -245,7 +296,20 @@ button:disabled {
                 <div id="topConfidence">
                     0% Confidence
                 </div>
+
+                <!-- PERSONAL DECISION -->
+                <div class="decision" id="myDecision">
+
+                    <h2>🤖 等待 AI 判断...</h2>
+
+                    <p>
+                        请将榴梿或红毛丹放在摄像头前面。
+                    </p>
+
+                </div>
+
             </div>
+
 
             <h2>CLASS PREDICTIONS</h2>
 
@@ -261,19 +325,20 @@ button:disabled {
 
     <div class="note">
         Powered by TensorFlow.js & Teachable Machine
-        <br>
+        <br><br>
         AI Vision Recognition | Educational Project
     </div>
 
 </div>
 
+
 <script>
 
-// ==================================
+// ======================================
 // MODEL SETTINGS
-// ==================================
+// ======================================
 
-// 请确认 my_model 文件夹与 HTML 在同一个目录
+// 模型文件夹
 const URL = "./my_model/";
 
 let model;
@@ -285,15 +350,20 @@ let animationId = null;
 let predicting = false;
 
 
-// ==================================
+// ======================================
 // START CAMERA
-// ==================================
+// ======================================
 
 async function init() {
 
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const status = document.getElementById("status");
+    const startBtn =
+        document.getElementById("startBtn");
+
+    const stopBtn =
+        document.getElementById("stopBtn");
+
+    const status =
+        document.getElementById("status");
 
     startBtn.disabled = true;
 
@@ -301,8 +371,11 @@ async function init() {
 
         status.innerText = "● Loading AI Model...";
 
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+        const modelURL =
+            URL + "model.json";
+
+        const metadataURL =
+            URL + "metadata.json";
 
         // Load AI model
         model = await tmImage.load(
@@ -310,9 +383,10 @@ async function init() {
             metadataURL
         );
 
-        maxPredictions = model.getTotalClasses();
+        maxPredictions =
+            model.getTotalClasses();
 
-        // Setup webcam
+        // Setup Webcam
         webcam = new tmImage.Webcam(
             300,
             300,
@@ -320,6 +394,7 @@ async function init() {
         );
 
         await webcam.setup();
+
         await webcam.play();
 
         // Display camera
@@ -327,6 +402,7 @@ async function init() {
             document.getElementById("webcam-container");
 
         container.innerHTML = "";
+
         container.appendChild(webcam.canvas);
 
         // Create prediction labels
@@ -337,7 +413,8 @@ async function init() {
 
         for (let i = 0; i < maxPredictions; i++) {
 
-            const div = document.createElement("div");
+            const div =
+                document.createElement("div");
 
             div.className = "prediction";
 
@@ -358,9 +435,11 @@ async function init() {
         running = true;
 
         startBtn.disabled = true;
+
         stopBtn.disabled = false;
 
-        status.innerText = "● Camera Active - Scanning...";
+        status.innerText =
+            "● Camera Active - Scanning...";
 
         loop();
 
@@ -375,15 +454,15 @@ async function init() {
 
         alert(
             "无法启动 AI Scanner。\n\n" +
-            "请检查模型文件、摄像头权限及网页运行环境。"
+            error.message
         );
     }
 }
 
 
-// ==================================
+// ======================================
 // AI PREDICTION LOOP
-// ==================================
+// ======================================
 
 async function loop() {
 
@@ -396,36 +475,44 @@ async function loop() {
         predicting = true;
 
         try {
+
             await predict();
+
         } catch (error) {
+
             console.error(error);
+
         } finally {
+
             predicting = false;
         }
     }
 
     if (running) {
-        animationId = requestAnimationFrame(loop);
+
+        animationId =
+            requestAnimationFrame(loop);
     }
 }
 
 
-// ==================================
-// PREDICT IMAGE
-// ==================================
+// ======================================
+// AI PREDICTION
+// ======================================
 
 async function predict() {
 
     const prediction =
         await model.predict(webcam.canvas);
 
-    // Find highest probability
     let highest = prediction[0];
 
     for (let i = 0; i < maxPredictions; i++) {
 
-        if (prediction[i].probability >
-            highest.probability) {
+        if (
+            prediction[i].probability >
+            highest.probability
+        ) {
 
             highest = prediction[i];
         }
@@ -447,37 +534,115 @@ async function predict() {
             probability + "%";
     }
 
-    // Show highest prediction
+    // Display AI result
     document.getElementById("topResult").innerText =
         highest.className;
 
     document.getElementById("topConfidence").innerText =
         (highest.probability * 100).toFixed(1) +
         "% Confidence";
+
+
+    // ==================================
+    // DECISION MAKING USING IF ELSE
+    // ==================================
+
+    const resultBox =
+        document.getElementById("myDecision");
+
+    const confidence =
+        highest.probability;
+
+    const fruit =
+        highest.className.toLowerCase().trim();
+
+    // Confidence below 75%
+    if (confidence < 0.75) {
+
+        resultBox.className = "decision unknown";
+
+        resultBox.innerHTML = `
+            <h2>🤔 我还不太确定！</h2>
+            <p>请换一个角度，再让我看看。</p>
+            <p>AI Confidence: ${(confidence * 100).toFixed(1)}%</p>
+        `;
+
+    }
+
+    // Rambutan
+    else if (
+        fruit.includes("红毛丹") ||
+        fruit.includes("rambutan")
+    ) {
+
+        resultBox.className = "decision like";
+
+        resultBox.innerHTML = `
+            <h2>❤️ 我喜欢吃！</h2>
+            <h2>🍒 这是红毛丹！</h2>
+            <p>AI 成功识别红毛丹！</p>
+            <p>Confidence: ${(confidence * 100).toFixed(1)}%</p>
+        `;
+
+    }
+
+    // Durian
+    else if (
+        fruit.includes("榴莲") ||
+        fruit.includes("榴梿") ||
+        fruit.includes("durian")
+    ) {
+
+        resultBox.className = "decision dislike";
+
+        resultBox.innerHTML = `
+            <h2>😅 我不喜欢吃！</h2>
+            <h2>🌰 这是榴梿！</h2>
+            <p>AI 成功识别榴梿！</p>
+            <p>Confidence: ${(confidence * 100).toFixed(1)}%</p>
+        `;
+
+    }
+
+    // Other classes
+    else {
+
+        resultBox.className = "decision unknown";
+
+        resultBox.innerHTML = `
+            <h2>🤖 我认识这个物品！</h2>
+            <p>${highest.className}</p>
+            <p>Confidence: ${(confidence * 100).toFixed(1)}%</p>
+        `;
+    }
+
 }
 
 
-// ==================================
+// ======================================
 // STOP CAMERA
-// ==================================
+// ======================================
 
 function stopCamera() {
 
     running = false;
 
     if (animationId !== null) {
+
         cancelAnimationFrame(animationId);
+
         animationId = null;
     }
 
     if (webcam) {
+
         webcam.stop();
     }
 
     document.getElementById("webcam-container")
         .innerHTML = `
         <div class="placeholder">
-            <p>📸</p>
+            <h1>📸</h1>
             <p>Camera Stopped</p>
         </div>
     `;
@@ -490,7 +655,6 @@ function stopCamera() {
 
     document.getElementById("stopBtn").disabled =
         true;
-
 }
 
 </script>
